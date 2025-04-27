@@ -1,10 +1,15 @@
-cmake_minimum_required(VERSION 3.4)
-project(lab05)
+cmake_minimum_required(VERSION 3.5)
+
+include("cmake/HunterGate.cmake")
+HunterGate(
+    URL "https://github.com/cpp-pm/hunter/archive/v0.23.251.tar.gz"
+    SHA1 "5659b15dc0884d4b03dbd95710e6a1fa0fc3258d"
+)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(BUILD_EXAMPLES "Build examples" OFF)
-option(BUILD_TESTS "Build tests" OFF)
+option(BUILD_TESTS "Build tests" OFF)  # Исправлено: было BUILD_TESTS
 
 project(print)
 set(PRINT_VERSION_MAJOR 0)
@@ -14,6 +19,10 @@ set(PRINT_VERSION_TWEAK 0)
 set(PRINT_VERSION
   ${PRINT_VERSION_MAJOR}.${PRINT_VERSION_MINOR}.${PRINT_VERSION_PATCH}.${PRINT_VERSION_TWEAK})
 set(PRINT_VERSION_STRING "v${PRINT_VERSION}")
+
+# Убрали FetchContent, так как используем Hunter
+hunter_add_package(GTest)
+find_package(GTest REQUIRED)  # Убрали CONFIG, так как Hunter использует модульный режим
 
 add_library(print STATIC ${CMAKE_CURRENT_SOURCE_DIR}/sources/print.cpp)
 
@@ -31,8 +40,15 @@ if(BUILD_EXAMPLES)
     install(TARGETS ${EXAMPLE_NAME}
       RUNTIME DESTINATION bin
     )
-  endforeach(EXAMPLE_SOURCE ${EXAMPLE_SOURCES})
+  endforeach()
 endif()
+
+if(BUILD_EXAMPLES)
+    add_executable(demo ${CMAKE_CURRENT_SOURCE_DIR}/demo/main.cpp)
+    target_link_libraries(demo print)
+    install(TARGETS demo RUNTIME DESTINATION bin)
+endif()
+
 
 install(TARGETS print
     EXPORT print-config
@@ -45,11 +61,17 @@ install(EXPORT print-config DESTINATION cmake)
 
 if(BUILD_TESTS)
   enable_testing()
-  add_subdirectory(third-party/gtest)
   file(GLOB ${PROJECT_NAME}_TEST_SOURCES tests/*.cpp)
   add_executable(check ${${PROJECT_NAME}_TEST_SOURCES})
-  target_link_libraries(check ${PROJECT_NAME} gtest_main)
+  target_link_libraries(check PRIVATE print GTest::GTest GTest::Main)  # Исправлено
   add_test(NAME check COMMAND check)
 endif()
+
+if(BUILD_EXAMPLES)
+    add_executable(demo ${CMAKE_CURRENT_SOURCE_DIR}/demo/main.cpp)
+    target_link_libraries(demo print)
+    install(TARGETS demo RUNTIME DESTINATION bin)
+endif()
+
 
 include(CPackConfig.cmake)
